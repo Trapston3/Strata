@@ -1,4 +1,4 @@
-function scoreIncident(events, allLogs) {
+function scoreIncident(events, ecosystemNoise) {
   const frequencyWeight = Math.min(events.length * 18, 45);
   const serviceSpread = new Set(events.map((event) => event.service)).size;
   const recentEventTime = Math.max(...events.map((event) => Date.parse(event.timestamp)));
@@ -7,7 +7,6 @@ function scoreIncident(events, allLogs) {
     Math.round((Date.now() - recentEventTime) / 60_000)
   );
   const recencyWeight = Math.max(10, 35 - minutesSinceLastEvent * 2);
-  const ecosystemNoise = new Set(allLogs.map((log) => log.service)).size;
 
   return Math.min(100, frequencyWeight + recencyWeight + serviceSpread * 10 + ecosystemNoise * 3);
 }
@@ -44,10 +43,12 @@ export function buildIncidents(logs) {
     groups.set(key, group);
   }
 
+  const ecosystemNoise = new Set(logs.map((log) => log.service)).size;
+
   return [...groups.values()]
     .map((group) => {
       group.events.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
-      const score = scoreIncident(group.events, logs);
+      const score = scoreIncident(group.events, ecosystemNoise);
 
       return {
         id: group.id,
