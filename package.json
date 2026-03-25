@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "npm run check",
+    "test": "npm run check && node --test",
     "check": "node --check src/server.js && node --check src/lib/incidents.js && node --check src/lib/sampleData.js && node --check public/app.js && python3 -m py_compile scripts/traffic_generator.py"
   },
   "keywords": [
