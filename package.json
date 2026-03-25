@@ -8,6 +8,8 @@
     "start": "node src/server.js",
     "test": "mocha tests/**/*.test.js && npm run check",
     "check": "node --check src/server.js && node --check src/lib/incidents.js && node --check src/lib/sampleData.js && node --check public/app.js && python3 -m py_compile scripts/traffic_generator.py"
+    "test": "npm run check",
+    "check": "node --check src/server.js && node --check src/lib/incidents.js && node --check public/app.js && python3 -m py_compile scripts/traffic_generator.py"
   },
   "keywords": [
     "aiops",
