@@ -11,7 +11,7 @@ function scoreIncident(events, ecosystemNoise) {
   return Math.min(100, frequencyWeight + recencyWeight + serviceSpread * 10 + ecosystemNoise * 3);
 }
 
-function classifySeverity(score) {
+export function classifySeverity(score) {
   if (score >= 80) return "critical";
   if (score >= 60) return "high";
   if (score >= 40) return "medium";
