@@ -27,7 +27,7 @@ const metricsState = {
   requestCounters: new Map()
 };
 
-function sanitizePath(path) {
+export function sanitizePath(path) {
   if (!path) return "/";
   return path.split("?")[0] || "/";
 }
@@ -212,6 +212,10 @@ app.use((req, res) => {
   res.sendFile(join(publicDir, "index.html"));
 });
 
-app.listen(port, host, () => {
-  logger.info({ host, port }, "strata listening");
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  app.listen(port, host, () => {
+    logger.info({ host, port }, "strata listening");
+  });
+}
+
+export { app };
