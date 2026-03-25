@@ -39,7 +39,7 @@ function inferService(pathname) {
   return "gateway";
 }
 
-function inferErrorCode(statusCode, pathname) {
+export function inferErrorCode(statusCode, pathname) {
   if (statusCode >= 500) return "HTTP_500";
   if (statusCode === 404) return "HTTP_404";
   if (statusCode === 403) return "HTTP_403";
@@ -212,6 +212,6 @@ app.use((req, res) => {
   res.sendFile(join(publicDir, "index.html"));
 });
 
-app.listen(port, host, () => {
+export const server = app.listen(port, host, () => {
   logger.info({ host, port }, "strata listening");
 });
