@@ -19,7 +19,7 @@ const logger = pino({
 });
 
 const app = express();
-app.set("trust proxy", true);
+app.set("trust proxy", ["loopback", "linklocal", "uniquelocal"]);
 
 const logBuffer = [];
 const metricsState = {
