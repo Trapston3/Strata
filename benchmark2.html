@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Benchmark</title>
+</head>
+<body>
+  <div id="deployment-node-grid"></div>
+  <script>
+    const grid = document.getElementById("deployment-node-grid");
+    // Generate 1000 nodes for benchmarking
+    for (let i = 0; i < 1000; i++) {
+      const node = document.createElement("div");
+      node.id = `deploy-node-${i}`;
+      node.className = "cluster-node is-active";
+      node.innerHTML = `
+        <span class="deploy-node-service text-sm font-medium">idle</span>
+        <span class="deploy-node-cpu text-[11px]">CPU: 0%</span>
+        <span class="deploy-node-status text-[10px]">Status: Ready</span>
+      `;
+      grid.appendChild(node);
+    }
+
+    const nodes = [...document.querySelectorAll("[id^='deploy-node-']")];
+    const logs = new Array(1000).fill({ service: "test", statusCode: 200, level: "info" });
+    const services = ["gateway", "auth", "payments"];
+    const health = { cpuPercent: 50 };
+
+    function clamp(val, min, max) { return Math.max(min, Math.min(val, max)); }
+
+    // Pre-cache elements
+    for (let node of nodes) {
+      node._serviceEl = node.querySelector(".deploy-node-service");
+      node._cpuEl = node.querySelector(".deploy-node-cpu");
+      node._statusEl = node.querySelector(".deploy-node-status");
+    }
+
+    // Original version
+    function runOriginal() {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const log = logs[i];
+        const service = services[i % services.length];
+        const cpu = clamp(Math.round((health.cpuPercent || 20) + (i % 3) * 6), 10, 96);
+        node.querySelector(".deploy-node-service").textContent = log?.service || service;
+        node.querySelector(".deploy-node-cpu").textContent = `CPU: ${cpu}%`;
+        const fiveHundred = Number(log?.statusCode || 0) >= 500;
+        const crashState = fiveHundred && Math.random() > 0.5 ? "Status: Terminating" : "Status: CrashLoopBackOff";
+        node.querySelector(".deploy-node-status").textContent = log?.level === "error" || fiveHundred ? crashState : log?.level === "warn" ? "Status: Degraded" : "Status: Running";
+        node.classList.remove("is-active", "is-error");
+      }
+    }
+
+    // Optimized version
+    function runOptimized() {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const log = logs[i];
+        const service = services[i % services.length];
+        const cpu = clamp(Math.round((health.cpuPercent || 20) + (i % 3) * 6), 10, 96);
+
+        node._serviceEl.textContent = log?.service || service;
+        node._cpuEl.textContent = `CPU: ${cpu}%`;
+        const fiveHundred = Number(log?.statusCode || 0) >= 500;
+        const crashState = fiveHundred && Math.random() > 0.5 ? "Status: Terminating" : "Status: CrashLoopBackOff";
+        node._statusEl.textContent = log?.level === "error" || fiveHundred ? crashState : log?.level === "warn" ? "Status: Degraded" : "Status: Running";
+        node.classList.remove("is-active", "is-error");
+      }
+    }
+
+    function benchmark(fn, iterations = 100) {
+      // Warmup
+      for (let i = 0; i < 10; i++) fn();
+
+      const start = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        fn();
+      }
+      return performance.now() - start;
+    }
+
+    setTimeout(() => {
+      const origTime = benchmark(runOriginal, 100);
+      const optTime = benchmark(runOptimized, 100);
+
+      const result = {
+        original: origTime,
+        optimized: optTime,
+        improvement: `${((origTime - optTime) / origTime * 100).toFixed(2)}%`
+      };
+
+      console.log(JSON.stringify(result));
+      document.body.innerHTML += `<div id="result">${JSON.stringify(result)}</div>`;
+    }, 500);
+  </script>
+</body>
+</html>
