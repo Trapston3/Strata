@@ -41,6 +41,7 @@ describe("DELETE /api/logs", () => {
 
   after((done) => {
     if (server) {
+      server.closeAllConnections();
       server.close(done);
     } else {
       done();
@@ -49,7 +50,8 @@ describe("DELETE /api/logs", () => {
 
   it("should clear the log buffer and return 204", async () => {
     // 1. Populate the log buffer by making a dummy request
-    await fetch(`${baseUrl}/health`);
+    const resHealth = await fetch(`${baseUrl}/health`);
+    await resHealth.text(); // consume body to ensure request completes
 
     // 2. Verify logs are present
     const resBefore = await fetch(`${baseUrl}/api/logs`);
@@ -58,6 +60,7 @@ describe("DELETE /api/logs", () => {
 
     // 3. Make the DELETE request
     const resDelete = await fetch(`${baseUrl}/api/logs`, { method: "DELETE" });
+    await resDelete.text(); // consume body
     assert.equal(resDelete.status, 204, "DELETE request should return 204 No Content");
 
     // 4. Verify logs are cleared (only the DELETE request and subsequent GET might be present)
