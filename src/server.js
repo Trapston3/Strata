@@ -151,7 +151,7 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const elapsed = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
     const path = sanitizePath(req.originalUrl || req.url);
-    const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || req.socket.remoteAddress || "unknown";
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
     const entry = buildLogEntry({
       reqId: req.id,
       method: req.method,
