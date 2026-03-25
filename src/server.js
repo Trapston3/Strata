@@ -124,7 +124,6 @@ function getRuntimeSnapshot() {
   return {
     status: "UP",
     uptime,
-    memory: memoryUsage,
     processID: process.pid,
     requestCount: metricsState.requestCount,
     cpuUsage,
