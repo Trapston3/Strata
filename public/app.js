@@ -2005,11 +2005,7 @@ function startCanaryDeployment() {
       node.style.borderColor = index < canaryCount ? "rgba(52, 211, 153, 0.45)" : "";
       node.style.boxShadow = index < canaryCount ? "0 0 18px rgba(52, 211, 153, 0.24)" : "";
 
-      let statusEl = node._statusEl;
-      if (!statusEl) {
-        statusEl = node.querySelector(".deploy-node-status");
-        node._statusEl = statusEl;
-      }
+      let statusEl = node._statusEl || (node._statusEl = node.querySelector(".deploy-node-status"));
       statusEl.textContent = index < canaryCount ? "v2 canary" : "v1 stable";
     });
     status.textContent = `Canary in flight: v2 serving ${Math.round(eased * 10)}% of traffic`;
@@ -2136,17 +2132,6 @@ function updateDeploymentsView(snapshot) {
     const service = services[index % services.length];
     const cpu = clamp(Math.round((health.cpuPercent || 20) + (index % 3) * 6), 10, 96);
 
-    let serviceEl = node._serviceEl;
-    let cpuEl = node._cpuEl;
-    let statusEl = node._statusEl;
-    if (!serviceEl) {
-      serviceEl = node.querySelector(".deploy-node-service");
-      cpuEl = node.querySelector(".deploy-node-cpu");
-      statusEl = node.querySelector(".deploy-node-status");
-      node._serviceEl = serviceEl;
-      node._cpuEl = cpuEl;
-      node._statusEl = statusEl;
-    }
     let serviceEl = node._svcEl || (node._svcEl = node.querySelector(".deploy-node-service"));
     let cpuEl = node._cpuEl || (node._cpuEl = node.querySelector(".deploy-node-cpu"));
     let statusEl = node._statusEl || (node._statusEl = node.querySelector(".deploy-node-status"));
