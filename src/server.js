@@ -19,7 +19,7 @@ const logger = pino({
 });
 
 const app = express();
-app.set("trust proxy", true);
+app.set("trust proxy", ["loopback", "linklocal", "uniquelocal"]);
 
 const logBuffer = [];
 const metricsState = {
@@ -57,7 +57,7 @@ function buildLogEntry({
   responseTimeMs,
   clientIp
 }) {
-  const service = "gateway";
+  const service = inferService(path);
   const level = statusCode >= 500 ? "error" : statusCode >= 400 ? "warn" : "info";
   const latencyMs = Number(responseTimeMs.toFixed(2));
 
@@ -124,7 +124,6 @@ function getRuntimeSnapshot() {
   return {
     status: "UP",
     uptime,
-    memory: memoryUsage,
     processID: process.pid,
     requestCount: metricsState.requestCount,
     cpuUsage,
@@ -151,7 +150,7 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const elapsed = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
     const path = sanitizePath(req.originalUrl || req.url);
-    const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || req.socket.remoteAddress || "unknown";
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
     const entry = buildLogEntry({
       reqId: req.id,
       method: req.method,
@@ -196,7 +195,23 @@ app.get("/api/logs", (req, res) => {
   res.status(200).json([...logBuffer]);
 });
 
-app.delete("/api/logs", (req, res) => {
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const expectedToken = process.env.ADMIN_TOKEN;
+
+  if (!expectedToken) {
+    req.log.error({ reqId: req.id }, "ADMIN_TOKEN is not configured");
+    return res.status(500).json({ error: "internal server error" });
+  }
+
+  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+    req.log.warn({ reqId: req.id, ip: req.ip }, "unauthorized log purge attempt");
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  next();
+}
+
+app.delete("/api/logs", requireAdmin, (req, res) => {
   logBuffer.length = 0;
   req.log.info({ reqId: req.id }, "log buffer purged");
   res.status(204).end();
