@@ -195,7 +195,23 @@ app.get("/api/logs", (req, res) => {
   res.status(200).json([...logBuffer]);
 });
 
-app.delete("/api/logs", (req, res) => {
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const expectedToken = process.env.ADMIN_TOKEN;
+
+  if (!expectedToken) {
+    req.log.error({ reqId: req.id }, "ADMIN_TOKEN is not configured");
+    return res.status(500).json({ error: "internal server error" });
+  }
+
+  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+    req.log.warn({ reqId: req.id, ip: req.ip }, "unauthorized log purge attempt");
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  next();
+}
+
+app.delete("/api/logs", requireAdmin, (req, res) => {
   logBuffer.length = 0;
   req.log.info({ reqId: req.id }, "log buffer purged");
   res.status(204).end();
