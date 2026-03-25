@@ -1,4 +1,4 @@
-function scoreIncident(events, allLogs) {
+export function scoreIncident(events, allLogs) {
   const frequencyWeight = Math.min(events.length * 18, 45);
   const serviceSpread = new Set(events.map((event) => event.service)).size;
   const recentEventTime = Math.max(...events.map((event) => Date.parse(event.timestamp)));
@@ -46,7 +46,18 @@ export function buildIncidents(logs) {
 
   return [...groups.values()]
     .map((group) => {
-      group.events.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+      // Map events to include parsed timestamp
+      const mappedEvents = group.events.map((event) => ({
+        event,
+        time: Date.parse(event.timestamp)
+      }));
+
+      // Sort using pre-computed times
+      mappedEvents.sort((a, b) => b.time - a.time);
+
+      // Restore original array order
+      group.events = mappedEvents.map((item) => item.event);
+
       const score = scoreIncident(group.events, logs);
 
       return {

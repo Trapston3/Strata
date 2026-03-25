@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "npm run check && node --test src/server.test.js",
+    "test": "mocha tests/**/*.test.js && npm run check",
     "check": "node --check src/server.js && node --check src/lib/incidents.js && node --check src/lib/sampleData.js && node --check public/app.js && python3 -m py_compile scripts/traffic_generator.py"
   },
   "keywords": [
@@ -20,5 +20,8 @@
     "pino": "^9.14.0",
     "pino-http": "^10.5.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "mocha": "^11.7.5"
+  }
 }
