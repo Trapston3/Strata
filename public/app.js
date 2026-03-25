@@ -2083,7 +2083,7 @@ function updateDashboardView(snapshot) {
           <span class="log-service">${log.service}</span>
           <span class="log-level level-${log.level}">${log.level}</span>
         </div>
-        <p class="log-message">${log.message}</p>
+        <p class="log-message">${escapeHtml(log.message)}</p>
       </article>
     `).join("");
   }
