@@ -212,10 +212,11 @@ app.use((req, res) => {
   res.sendFile(join(publicDir, "index.html"));
 });
 
+let server;
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  app.listen(port, host, () => {
+  server = app.listen(port, host, () => {
     logger.info({ host, port }, "strata listening");
   });
 }
 
-export { app };
+export { app, server };
