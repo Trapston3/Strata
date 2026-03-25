@@ -57,7 +57,7 @@ function buildLogEntry({
   responseTimeMs,
   clientIp
 }) {
-  const service = "gateway";
+  const service = inferService(path);
   const level = statusCode >= 500 ? "error" : statusCode >= 400 ? "warn" : "info";
   const latencyMs = Number(responseTimeMs.toFixed(2));
 
