@@ -27,7 +27,7 @@ const metricsState = {
   requestCounters: new Map()
 };
 
-function sanitizePath(path) {
+export function sanitizePath(path) {
   if (!path) return "/";
   return path.split("?")[0] || "/";
 }
@@ -65,12 +65,16 @@ function buildLogEntry({
     id: `${reqId}-${Date.now()}`,
     timestamp: new Date().toISOString(),
     service,
+    url: path,
+    status: statusCode,
+    responseTime: latencyMs,
     level,
     message: `${method} ${path} -> ${statusCode} in ${latencyMs}ms`,
     errorCode: inferErrorCode(statusCode, path),
     method,
     path,
     statusCode,
+    responseTimeMs: latencyMs,
     latencyMs,
     clientIp
   };
@@ -208,6 +212,10 @@ app.use((req, res) => {
   res.sendFile(join(publicDir, "index.html"));
 });
 
-app.listen(port, host, () => {
-  logger.info({ host, port }, "strata listening");
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  app.listen(port, host, () => {
+    logger.info({ host, port }, "strata listening");
+  });
+}
+
+export { app };
