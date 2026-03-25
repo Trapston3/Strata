@@ -2004,7 +2004,9 @@ function startCanaryDeployment() {
       node.classList.toggle("is-error", false);
       node.style.borderColor = index < canaryCount ? "rgba(52, 211, 153, 0.45)" : "";
       node.style.boxShadow = index < canaryCount ? "0 0 18px rgba(52, 211, 153, 0.24)" : "";
-      node.querySelector(".deploy-node-status").textContent = index < canaryCount ? "v2 canary" : "v1 stable";
+
+      let statusEl = node._statusEl || (node._statusEl = node.querySelector(".deploy-node-status"));
+      statusEl.textContent = index < canaryCount ? "v2 canary" : "v1 stable";
     });
     status.textContent = `Canary in flight: v2 serving ${Math.round(eased * 10)}% of traffic`;
     if (progress < 1) {
