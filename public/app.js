@@ -2129,11 +2129,16 @@ function updateDeploymentsView(snapshot) {
     const log = logs[index];
     const service = services[index % services.length];
     const cpu = clamp(Math.round((health.cpuPercent || 20) + (index % 3) * 6), 10, 96);
-    node.querySelector(".deploy-node-service").textContent = log?.service || service;
-    node.querySelector(".deploy-node-cpu").textContent = `CPU: ${cpu}%`;
+
+    let serviceEl = node._svcEl || (node._svcEl = node.querySelector(".deploy-node-service"));
+    let cpuEl = node._cpuEl || (node._cpuEl = node.querySelector(".deploy-node-cpu"));
+    let statusEl = node._statusEl || (node._statusEl = node.querySelector(".deploy-node-status"));
+
+    serviceEl.textContent = log?.service || service;
+    cpuEl.textContent = `CPU: ${cpu}%`;
     const fiveHundred = Number(log?.statusCode || 0) >= 500;
     const crashState = fiveHundred && Math.random() > 0.5 ? "Status: Terminating" : "Status: CrashLoopBackOff";
-    node.querySelector(".deploy-node-status").textContent = log?.level === "error" || fiveHundred ? crashState : log?.level === "warn" ? "Status: Degraded" : "Status: Running";
+    statusEl.textContent = log?.level === "error" || fiveHundred ? crashState : log?.level === "warn" ? "Status: Degraded" : "Status: Running";
     node.classList.remove("is-active", "is-error");
     if (log?.level === "error" || fiveHundred) {
       node.classList.add("is-error");
@@ -2141,7 +2146,7 @@ function updateDeploymentsView(snapshot) {
       node._statusTimer = window.setTimeout(() => {
         node.classList.remove("is-error");
         node.classList.add("is-active");
-        node.querySelector(".deploy-node-status").textContent = "Status: Running";
+        statusEl.textContent = "Status: Running";
       }, 15000);
     } else if (log) {
       node.classList.add("is-active");
