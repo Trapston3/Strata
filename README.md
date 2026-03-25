@@ -1,6 +1,7 @@
 # Strata
 
-Strata is a site reliability validation console that instruments its own runtime, emits structured logs, exposes Prometheus-compatible metrics, and visualizes live platform health through an operator-focused control surface.
+Strata is a self-observing SRE platform that instruments its own HTTP traffic, exports structured logs and Prometheus metrics, visualizes live cluster and security posture, and provides incident-response workflows through a browser-based control plane.
+
 
 ## What This Demonstrates
 
@@ -61,7 +62,3 @@ See [main.yml](/home/ojesus/projectt/.github/workflows/main.yml).
 - Logs are stored in-memory for dashboard visualization and incident correlation.
 - Prometheus metrics are exported in text format for counters and request-duration histograms.
 - The frontend polls live APIs and re-renders runtime-aware SRE views without simulated traffic sources.
-
-## Portfolio Pitch
-
-Built a self-observing SRE platform that instruments its own HTTP traffic, exports structured logs and Prometheus metrics, visualizes live cluster and security posture, and provides incident-response workflows through a browser-based control plane.
