@@ -65,16 +65,12 @@ function buildLogEntry({
     id: `${reqId}-${Date.now()}`,
     timestamp: new Date().toISOString(),
     service,
-    url: path,
-    status: statusCode,
-    responseTime: latencyMs,
     level,
     message: `${method} ${path} -> ${statusCode} in ${latencyMs}ms`,
     errorCode: inferErrorCode(statusCode, path),
     method,
     path,
     statusCode,
-    responseTimeMs: latencyMs,
     latencyMs,
     clientIp
   };
