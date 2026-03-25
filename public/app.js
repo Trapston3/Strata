@@ -2089,7 +2089,7 @@ function updateDashboardView(snapshot) {
           <span class="log-service">${log.service}</span>
           <span class="log-level level-${log.level}">${log.level}</span>
         </div>
-        <p class="log-message">${log.message}</p>
+        <p class="log-message">${escapeHtml(log.message)}</p>
       </article>
     `).join("");
   }
@@ -2147,6 +2147,9 @@ function updateDeploymentsView(snapshot) {
       node._cpuEl = cpuEl;
       node._statusEl = statusEl;
     }
+    let serviceEl = node._svcEl || (node._svcEl = node.querySelector(".deploy-node-service"));
+    let cpuEl = node._cpuEl || (node._cpuEl = node.querySelector(".deploy-node-cpu"));
+    let statusEl = node._statusEl || (node._statusEl = node.querySelector(".deploy-node-status"));
 
     serviceEl.textContent = log?.service || service;
     cpuEl.textContent = `CPU: ${cpu}%`;
@@ -2408,12 +2411,8 @@ function generateMockLog(profile, index = 0) {
     id: `telemetry-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
     timestamp: new Date(Date.now() - index * 220).toISOString(),
     method: index % 3 === 0 ? "POST" : "GET",
-    url: path,
     path,
-    status: statusCode,
     statusCode,
-    responseTime,
-    responseTimeMs: responseTime,
     latencyMs: responseTime,
     service,
     level,
