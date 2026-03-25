@@ -1,4 +1,4 @@
-function scoreIncident(events, allLogs) {
+export function scoreIncident(events, allLogs) {
   const frequencyWeight = Math.min(events.length * 18, 45);
   const serviceSpread = new Set(events.map((event) => event.service)).size;
   const recentEventTime = Math.max(...events.map((event) => Date.parse(event.timestamp)));
