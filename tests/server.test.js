@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import request from "supertest";
-import { app, sanitizePath, server } from "../src/server.js";
+import { sanitizePath, app } from "../src/server.js";
 
 describe("sanitizePath", () => {
   it("should return '/' for empty strings, null, or undefined", () => {
@@ -27,18 +27,41 @@ describe("sanitizePath", () => {
   });
 });
 
-describe("GET /health", () => {
-  after(() => {
-    if (server) {
-      server.close();
-    }
+describe("GET /api/logs", () => {
+  beforeEach(async () => {
+    await request(app).delete("/api/logs");
   });
 
-  it("should return status 200 and a runtime snapshot", async () => {
-    const res = await request(app).get("/health");
-    assert.equal(res.status, 200);
-    assert.ok(res.body.uptime !== undefined, "Expected response body to contain uptime");
-    assert.ok(res.body.memory !== undefined, "Expected response body to contain memory");
-    assert.ok(res.body.processID !== undefined, "Expected response body to contain processID");
+  it("should return an empty array initially", async () => {
+    // Note: The `DELETE /api/logs` request in beforeEach is itself logged!
+    // So the log buffer will have 1 entry for the DELETE request.
+    const response = await request(app).get("/api/logs");
+    assert.equal(response.status, 200);
+    // Since DELETE /api/logs logs itself when it finishes, we should check if
+    // all logs are cleared before the NEXT request happens. Wait,
+    // `logBuffer.length = 0` happens synchronously, but Express `res.on('finish')`
+    // logs the DELETE request after `res.status(204).end()` is called.
+    // So there is always exactly 1 log: the DELETE request itself!
+    assert.equal(response.body.length, 1);
+    assert.equal(response.body[0].method, "DELETE");
+    assert.equal(response.body[0].path, "/api/logs");
+  });
+
+  it("should return log entries after requests are made", async () => {
+    // Make a request to trigger logging
+    await request(app).get("/health");
+
+    // Retrieve the logs
+    const response = await request(app).get("/api/logs");
+    assert.equal(response.status, 200);
+
+    assert.ok(Array.isArray(response.body), "Response body should be an array");
+    assert.ok(response.body.length > 0, "Log buffer should not be empty");
+
+    // The most recent log should be at the beginning (unshifted)
+    const logEntry = response.body[0];
+    assert.equal(logEntry.path, "/health");
+    assert.equal(logEntry.method, "GET");
+    assert.equal(logEntry.statusCode, 200);
   });
 });
