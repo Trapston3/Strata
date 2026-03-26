@@ -21,7 +21,10 @@ const logger = pino({
 const app = express();
 app.set("trust proxy", true);
 
-const logBuffer = [];
+const logBuffer = new Array(maxLogEntries);
+let logIndex = 0;
+let logCount = 0;
+
 const metricsState = {
   requestCount: 0,
   requestCounters: new Map()
@@ -80,10 +83,22 @@ function buildLogEntry({
   };
 }
 
+function getLogs() {
+  if (logCount === 0) return [];
+  const res = new Array(logCount);
+  let p = logIndex - 1;
+  for (let i = 0; i < logCount; i++) {
+    if (p < 0) p = maxLogEntries - 1;
+    res[i] = logBuffer[p--];
+  }
+  return res;
+}
+
 function appendLog(entry) {
-  logBuffer.unshift(entry);
-  if (logBuffer.length > maxLogEntries) {
-    logBuffer.length = maxLogEntries;
+  logBuffer[logIndex] = entry;
+  logIndex = (logIndex + 1) % maxLogEntries;
+  if (logCount < maxLogEntries) {
+    logCount++;
   }
 }
 
@@ -132,7 +147,7 @@ function getRuntimeSnapshot() {
     memoryUsage,
     memoryPercent,
     services,
-    logBufferSize: logBuffer.length
+    logBufferSize: logCount
   };
 }
 
@@ -193,17 +208,18 @@ app.get("/metrics", (req, res) => {
 });
 
 app.get("/api/logs", (req, res) => {
-  res.status(200).json([...logBuffer]);
+  res.status(200).json(getLogs());
 });
 
 app.delete("/api/logs", (req, res) => {
-  logBuffer.length = 0;
+  logCount = 0;
+  logIndex = 0;
   req.log.info({ reqId: req.id }, "log buffer purged");
   res.status(204).end();
 });
 
 app.get("/api/incidents", (req, res) => {
-  res.status(200).json({ incidents: buildIncidents(logBuffer) });
+  res.status(200).json({ incidents: buildIncidents(getLogs()) });
 });
 
 app.use(express.static(publicDir));
@@ -212,10 +228,11 @@ app.use((req, res) => {
   res.sendFile(join(publicDir, "index.html"));
 });
 
+let server;
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  app.listen(port, host, () => {
+  server = app.listen(port, host, () => {
     logger.info({ host, port }, "strata listening");
   });
 }
 
-export { app };
+export { app, server };

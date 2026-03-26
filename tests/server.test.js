@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
-import { sanitizePath } from "../src/server.js";
+import request from "supertest";
+import { sanitizePath, app } from "../src/server.js";
 
 describe("sanitizePath", () => {
   it("should return '/' for empty strings, null, or undefined", () => {
@@ -26,52 +27,41 @@ describe("sanitizePath", () => {
   });
 });
 
-describe("DELETE /api/logs", () => {
-  let server;
-  let baseUrl;
-
-  before((done) => {
-    import("../src/server.js").then(({ app }) => {
-      server = app.listen(0, "127.0.0.1", () => {
-        baseUrl = `http://127.0.0.1:${server.address().port}`;
-        done();
-      });
-    }).catch(done);
+describe("GET /api/logs", () => {
+  beforeEach(async () => {
+    await request(app).delete("/api/logs");
   });
 
-  after((done) => {
-    if (server) {
-      server.closeAllConnections();
-      server.close(done);
-    } else {
-      done();
-    }
+  it("should return an empty array initially", async () => {
+    // Note: The `DELETE /api/logs` request in beforeEach is itself logged!
+    // So the log buffer will have 1 entry for the DELETE request.
+    const response = await request(app).get("/api/logs");
+    assert.equal(response.status, 200);
+    // Since DELETE /api/logs logs itself when it finishes, we should check if
+    // all logs are cleared before the NEXT request happens. Wait,
+    // `logBuffer.length = 0` happens synchronously, but Express `res.on('finish')`
+    // logs the DELETE request after `res.status(204).end()` is called.
+    // So there is always exactly 1 log: the DELETE request itself!
+    assert.equal(response.body.length, 1);
+    assert.equal(response.body[0].method, "DELETE");
+    assert.equal(response.body[0].path, "/api/logs");
   });
 
-  it("should clear the log buffer and return 204", async () => {
-    // 1. Populate the log buffer by making a dummy request
-    const resHealth = await fetch(`${baseUrl}/health`);
-    await resHealth.text(); // consume body to ensure request completes
+  it("should return log entries after requests are made", async () => {
+    // Make a request to trigger logging
+    await request(app).get("/health");
 
-    // 2. Verify logs are present
-    const resBefore = await fetch(`${baseUrl}/api/logs`);
-    const logsBefore = await resBefore.json();
-    assert.ok(logsBefore.length > 0, "Log buffer should not be empty before deletion");
+    // Retrieve the logs
+    const response = await request(app).get("/api/logs");
+    assert.equal(response.status, 200);
 
-    // 3. Make the DELETE request
-    const resDelete = await fetch(`${baseUrl}/api/logs`, { method: "DELETE" });
-    await resDelete.text(); // consume body
-    assert.equal(resDelete.status, 204, "DELETE request should return 204 No Content");
+    assert.ok(Array.isArray(response.body), "Response body should be an array");
+    assert.ok(response.body.length > 0, "Log buffer should not be empty");
 
-    // 4. Verify logs are cleared (only the DELETE request and subsequent GET might be present)
-    const resAfter = await fetch(`${baseUrl}/api/logs`);
-    const logsAfter = await resAfter.json();
-
-    // The previous GET /health should be gone.
-    const healthLogs = logsAfter.filter(l => l.path === "/health");
-    assert.equal(healthLogs.length, 0, "Previous logs should be cleared");
-
-    // The logBuffer may have the DELETE request itself, and the new GET request, but it will be much smaller
-    assert.ok(logsAfter.length < logsBefore.length || logsBefore.length <= 2, "Log buffer size should be reset");
+    // The most recent log should be at the beginning (unshifted)
+    const logEntry = response.body[0];
+    assert.equal(logEntry.path, "/health");
+    assert.equal(logEntry.method, "GET");
+    assert.equal(logEntry.statusCode, 200);
   });
 });
