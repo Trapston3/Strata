@@ -474,6 +474,11 @@ func requestID(r *http.Request) string {
 func clientIP(r *http.Request) string {
 	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
 		parts := strings.Split(forwarded, ",")
+		for _, part := range parts {
+			if parseIP(strings.TrimSpace(part)) == "" {
+				return "unknown"
+			}
+		}
 		if len(parts) > 0 {
 			if ip := parseIP(strings.TrimSpace(parts[0])); ip != "" {
 				return ip
