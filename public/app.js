@@ -1314,8 +1314,143 @@ function simulateCriticalSpike() {
   writeOpsLine("[CRITICAL] Gateway saturation event injected");
   writeOpsLine("[CRITICAL] Payment retries exhausted");
   writeOpsLine("[CRITICAL] Auth signer queue breached");
-  syncCurrentTelemetry();
+  applyCriticalSimulationSnapshot();
   if (!isReplaying) renderLiveSnapshot();
+}
+
+function applyCriticalSimulationSnapshot() {
+  const timestamp = Date.now();
+  const simulatedLogs = [
+    {
+      id: `sim-critical-${timestamp}-0`,
+      timestamp: new Date(timestamp).toISOString(),
+      method: "POST",
+      url: "/api/gateway/edge",
+      path: "/api/gateway/edge",
+      status: 503,
+      statusCode: 503,
+      responseTime: 1680,
+      responseTimeMs: 1680,
+      latencyMs: 1680,
+      service: "gateway",
+      level: "error",
+      clientIp: "10.42.0.41",
+      errorCode: "EDGE_TIMEOUT",
+      message: "[CRITICAL] Gateway ingress saturation detected. Requests are being shed at the edge."
+    },
+    {
+      id: `sim-critical-${timestamp}-1`,
+      timestamp: new Date(timestamp - 180).toISOString(),
+      method: "POST",
+      url: "/api/auth/session",
+      path: "/api/auth/session",
+      status: 503,
+      statusCode: 503,
+      responseTime: 1540,
+      responseTimeMs: 1540,
+      latencyMs: 1540,
+      service: "auth",
+      level: "error",
+      clientIp: "10.42.0.42",
+      errorCode: "AUTH_QUEUE_BACKUP",
+      message: "[CRITICAL] Auth signer queue breached. Session minting has stalled."
+    },
+    {
+      id: `sim-critical-${timestamp}-2`,
+      timestamp: new Date(timestamp - 360).toISOString(),
+      method: "POST",
+      url: "/api/payments/charge",
+      path: "/api/payments/charge",
+      status: 503,
+      statusCode: 503,
+      responseTime: 1470,
+      responseTimeMs: 1470,
+      latencyMs: 1470,
+      service: "payments",
+      level: "error",
+      clientIp: "10.42.0.43",
+      errorCode: "PAYMENT_RETRY_EXHAUSTED",
+      message: "[CRITICAL] Payment retries exhausted. Settlement workers are dropping throughput."
+    }
+  ];
+  const simulatedIncidents = [
+    {
+      service: "gateway",
+      errorCode: "EDGE_TIMEOUT",
+      summary: "Gateway ingress is saturated and actively shedding live traffic at the edge.",
+      score: 99,
+      eventCount: 47,
+      severity: "critical",
+      latestTimestamp: simulatedLogs[0].timestamp
+    },
+    {
+      service: "auth",
+      errorCode: "AUTH_QUEUE_BACKUP",
+      summary: "Identity sessions are queueing behind a breached signer backlog.",
+      score: 97,
+      eventCount: 39,
+      severity: "critical",
+      latestTimestamp: simulatedLogs[1].timestamp
+    },
+    {
+      service: "payments",
+      errorCode: "PAYMENT_RETRY_EXHAUSTED",
+      summary: "Settlement retries are saturated and successful charge completion is collapsing.",
+      score: 95,
+      eventCount: 34,
+      severity: "critical",
+      latestTimestamp: simulatedLogs[2].timestamp
+    }
+  ];
+
+  currentLogs = [...simulatedLogs, ...currentLogs].slice(0, 50);
+  currentIncidents = simulatedIncidents;
+  currentCpu = 99;
+  currentMem = 99;
+  currentLat = 1680;
+  currentTrafficBars = Array.from({ length: 15 }, () => 99);
+  currentDeploymentStep = 1;
+  currentTelemetryTimestamp = timestamp;
+
+  state.trafficBars = [...currentTrafficBars];
+  state.deploymentStep = currentDeploymentStep;
+  state.latestLogs = structuredClone(currentLogs);
+  state.latestIncidents = structuredClone(currentIncidents);
+  state.latestHealth = {
+    ...(state.latestHealth || {}),
+    uptime: state.latestHealth?.uptime ?? Math.round(performance.now() / 1000),
+    processID: state.latestHealth?.processID ?? 4242,
+    cpuPercent: 99,
+    memoryPercent: 99,
+    memory: {
+      rss: 768 * 1024 * 1024,
+      heapUsed: 612 * 1024 * 1024
+    }
+  };
+  state.latestMetricsText = [
+    "# HELP strata_requests_total Simulated request count",
+    "# TYPE strata_requests_total counter",
+    "strata_requests_total{service=\"gateway\"} 4096",
+    "strata_cpu_percent 99",
+    "strata_memory_percent 99",
+    "strata_latency_ms 1680"
+  ].join("\n");
+
+  const clusterLoadBar = document.getElementById("resource-cpu-bar");
+  const clusterLoadReadout = document.getElementById("cluster-load-readout");
+  const clusterMemoryBar = document.getElementById("resource-memory-bar");
+  const clusterMemoryReadout = document.getElementById("cluster-memory-readout");
+  const equalizer = document.getElementById("traffic-equalizer");
+
+  if (clusterLoadBar) clusterLoadBar.style.width = "99%";
+  if (clusterLoadReadout) clusterLoadReadout.textContent = "99%";
+  if (clusterMemoryBar) clusterMemoryBar.style.width = "99%";
+  if (clusterMemoryReadout) clusterMemoryReadout.textContent = "99%";
+  if (equalizer) {
+    equalizer.innerHTML = Array.from({ length: 15 }, (_, index) => `
+      <span class="traffic-bar is-critical" style="height:99px; animation-delay:${index * 60}ms"></span>
+    `).join("");
+  }
 }
 
 function getServiceSurface(label) {
@@ -2274,6 +2409,9 @@ function updateSecurityView(logs) {
 }
 
 async function loadDashboard() {
+  if (state.incidentMode === "critical" || state.incidentMode === "remediating") {
+    return;
+  }
   if (state.isLoading) return;
   state.isLoading = true;
 
@@ -2297,6 +2435,24 @@ async function loadDashboard() {
     state.latestLogs = Array.isArray(logsData) ? logsData : logsData.logs || [];
     state.latestHealth = { ...state.latestHealth, ...healthData };
     state.latestMetricsText = metricsText;
+    currentLogs = structuredClone(state.latestLogs);
+    currentIncidents = structuredClone(state.latestIncidents);
+    currentCpu = clamp(Math.round(Number(healthData.cpuPercent ?? state.latestHealth?.cpuPercent ?? currentCpu)), 0, 100);
+    currentMem = clamp(Math.round(Number(healthData.memoryPercent ?? state.latestHealth?.memoryPercent ?? currentMem)), 0, 100);
+    currentLat = clamp(
+      Math.round(state.latestLogs.reduce((total, log) => total + Number(log.latencyMs || log.responseTimeMs || log.responseTime || 0), 0) / Math.max(state.latestLogs.length, 1)),
+      0,
+      2000
+    );
+    currentTrafficBars = deriveHistoricalTrafficBars({
+      cpu: currentCpu,
+      memory: currentMem,
+      latency: currentLat
+    });
+    currentDeploymentStep = currentLat > 300 ? 1 : currentLat > 140 ? 2 : 3;
+    currentTelemetryTimestamp = Date.now();
+    state.trafficBars = [...currentTrafficBars];
+    state.deploymentStep = currentDeploymentStep;
 
     const mostRecentLog = state.latestLogs[0];
     state.topologyNodes.forEach((node) => {
@@ -2749,8 +2905,8 @@ function filterCommands(query) {
 async function executeSelectedCommand() {
   const command = state.filteredCommands[state.selectedIndex];
   if (!command) return;
-  await command.action();
   closePalette();
+  await command.action();
 }
 
 function initializeCommandPalette() {
@@ -2842,6 +2998,11 @@ function initializeActionMorph() {
       fixButton.querySelector(".action-text").textContent = "Stabilized";
       syncCurrentTelemetry();
       if (!isReplaying) renderLiveSnapshot();
+      loadDashboard()
+        .then(() => {
+          if (!isReplaying) renderLiveSnapshot();
+        })
+        .catch(console.error);
       window.setTimeout(() => {
         fixButton.classList.remove("is-success");
         fixButton.querySelector(".action-text").textContent = "Fix This for Me";
