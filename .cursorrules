@@ -1,0 +1,5 @@
+# Strata SRE Control Plane - Golang Standards
+- **Routing:** Prefer Go 1.22+ standard library `net/http`. No third-party frameworks.
+- **Concurrency:** ALL shared state (like telemetry buffers) MUST be protected by `sync.RWMutex`. Proactively hunt for race conditions and goroutine leaks.
+- **Logging:** Strictly use `log/slog` for structured JSON output. Never use `fmt.Println` or `log.Printf` for server logs.
+- **Security:** Sanitize incoming HTTP paths/IPs. Never use `panic()`. Handle errors explicitly.
